@@ -12,4 +12,10 @@ from statsmodels.tools.eval_measures import rmse, aic
 
 
 # Import Data for Analysis
-pd.read_csv('./Primary_Dataset.csv', index_col=)
+df = pd.read_csv('./Primary_Dataset_1_CSV.csv', parse_dates=['Year'], index_col=['Year'])
+
+# Initial Data Visualization
+# df.plot(subplots=True, figsize=(6, 6)); plt.legend(loc='best')
+# plt.show()
+
+print(df)
