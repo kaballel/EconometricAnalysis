@@ -13,9 +13,15 @@ from statsmodels.tools.eval_measures import rmse, aic
 
 # Import Data for Analysis
 df = pd.read_csv('./Primary_Dataset_1_CSV.csv', parse_dates=['Year'], index_col=['Year'])
+df.drop(['Unnamed: 11', 'Unnamed: 12'], axis=1, inplace=True)
+df.astype(float)
 
 # Initial Data Visualization
-# df.plot(subplots=True, figsize=(6, 6)); plt.legend(loc='best')
-# plt.show()
+print(df.head())
+print('\n')
 
-print(df)
+df['1903-01-01':'2003-01-01'].plot()
+# df.plot(x='Year', y='pop')
+# plt.show()
+df.plot(y='pop')
+plt.show()
