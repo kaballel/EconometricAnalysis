@@ -8,4 +8,4 @@ from statsmodels.tsa.stattools import adfuller
 from statsmodels.tools.eval_measures import rmse, aic
 
 # Import Data for Analysis
-filepath =
+pd.read_csv('./Primary_Dataset.csv')
