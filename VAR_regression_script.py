@@ -20,14 +20,9 @@ from statsmodels.tsa.stattools import grangercausalitytests
 # Ignore Warnings on Code (ATS throwing errors)
 warnings.filterwarnings("ignore")
 
-# Variable Names for Reference:
-# Year, pop, prodElectric, lenRail, prodAgr, numPatents, numMiners, numCorps, propAgr, propManu, gdpPerCap
-
 # Import Data for Analysis
 initial_df = pd.read_csv('./Primary_Dataset_1.csv', parse_dates=['Year'], index_col=['Year'])
 initial_df.drop(['propAgr', 'propManu'], axis=1, inplace=True)
-# print(initial_df.head())
-# print(initial_df.dtypes)
 
 # Set Max Timelag
 maxlag = 8
@@ -40,7 +35,8 @@ def visualize_sep(dataframe):
         data = dataframe[dataframe.columns[i]]
         ax.plot(data, color='red', linewidth=1)
         # Decorations
-        ax.set_title(dataframe.columns[i])
+        ax.set_title(str(dataframe.columns[i] + ' vs. Year'))
+        ax.set_xlabel('Year')
         ax.xaxis.set_ticks_position('none')
         ax.yaxis.set_ticks_position('none')
         ax.spines["top"].set_alpha(0)
@@ -127,13 +123,14 @@ normalized_df = (initial_df - initial_df.mean())/ initial_df.std()
 # --------------------------------------------
 first_difference_df = normalized_df.diff().dropna()
 second_difference_df = first_difference_df.diff().dropna()
-
+# adfuller_test(second_difference_df)
 
 # Visualize Corrected Data
 # -------------------------
 # visualize_sep(second_difference_df)
+# visualize_stack(initial_df)
 # visualize_stack(second_difference_df)
-
+# cointegration_test(second_difference_df)
 
 # Test out VAR model, Print Summary
 # --------------------------------------
@@ -144,18 +141,65 @@ results = model.fit(maxlags=maxlag, ic='aic')
 
 # Perform Durbin-Watson Test
 # ----------------------------
-# from statsmodels.stats.stattools import durbin_watson
-# print(durbin_watson(results.resid))
+def durbin_watson_test():
+    print('Durbin-Watson Results: ')
+    dw_stats = durbin_watson(results.resid)
+    dw_vars = ['pop', 'prodElectric', 'lenRail', 'prodAgr', 'numPatents', 'numMiners', 'numCorps', 'gdpPerCap']
+    print(dict(zip(dw_vars, dw_stats)))
+# durbin_watson_test()
 
 
 # Scan Results for Significant P-Values, List Results
 # -----------------------------------------------------
-p_val_df = pd.DataFrame(results.pvalues.gdpPerCap)
-p_val_df['Coefficients'] = results.params.gdpPerCap
-count1 = 0
-param_list = []
-for i in range(len(p_val_df)):
-    if p_val_df.gdpPerCap.values[i] < 0.05:
-        print('P-Val = ' + str(round(p_val_df.gdpPerCap.values[i], 4)) + ' for ' + str(p_val_df.index.values[i]) + '. Coeff = ' + str(round(results.params.gdpPerCap[i], 4)))
-        count1 += 1
-print('\n' + 'Total Significant = ' + str(count1))
+def scan_for_significance():
+    p_val_df = pd.DataFrame(results.pvalues.gdpPerCap)
+    p_val_df['Coefficients'] = results.params.gdpPerCap
+    count1 = 0
+    param_list = []
+    print('Scanning for significant variables ...')
+    for i in range(len(p_val_df)):
+        if p_val_df.gdpPerCap.values[i] < 0.05:
+            print('P-Val = ' + str(round(p_val_df.gdpPerCap.values[i], 4)) + ' for ' + str(p_val_df.index.values[i]) + '. Coeff = ' + str(round(results.params.gdpPerCap[i], 4)))
+            count1 += 1
+    print('\n' + 'Total Significant = ' + str(count1))
+# scan_for_significance()
+
+
+# Forecast VAR Model N-Years into future
+# ---------------------------------------
+def forecast_future(num_years, showGraph=True):
+    years_to_forecast = num_years
+    lag_order = results.k_ar
+    forecast_input = second_difference_df.values[-lag_order:]
+    fc = results.forecast(y=forecast_input, steps=years_to_forecast)
+    df_forecast = pd.DataFrame(fc, index=second_difference_df.index[-years_to_forecast:], columns=second_difference_df.columns + '_2d')
+
+    # Invert Forecast Transformations
+    # --------------------------------
+    def invert_transformation(initial_df, df_forecast, second_diff=False):
+        """Revert back the differencing to get the forecast to original scale."""
+        df_fc = df_forecast.copy()
+        columns = initial_df.columns
+        for col in columns:
+            # Roll back 2nd Diff
+            if second_diff:
+                df_fc[str(col)+'_1d'] = (initial_df[col].iloc[-1]-initial_df[col].iloc[-2]) + df_fc[str(col)+'_2d'].cumsum()
+            # Roll back 1st Diff
+            df_fc[str(col)+'_forecast'] = initial_df[col].iloc[-1] + df_fc[str(col)+'_1d'].cumsum()
+        return df_fc
+    df_results = invert_transformation(initial_df, df_forecast, second_diff=True)
+
+    if showGraph == True:
+        # Plot Forecast Vs. Actual
+        # --------------------------
+        fig, axes = plt.subplots(nrows=int(len(initial_df.columns)/2), ncols=2, dpi=150, figsize=(10,10))
+        for i, (col,ax) in enumerate(zip(initial_df.columns, axes.flatten())):
+            df_results[col+'_forecast'].plot(legend=True, ax=ax).autoscale(axis='x',tight=True)
+            initial_df[col][-years_to_forecast:].plot(legend=True, ax=ax);
+            ax.set_title(col + ": Forecast vs Actuals")
+            ax.spines["top"].set_alpha(0)
+            ax.tick_params(labelsize=6)
+            ax.set_ylim(0, initial_df[col][100]*2)
+        plt.tight_layout()
+        plt.show()
+# forecast_future(10)
