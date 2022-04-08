@@ -135,7 +135,7 @@ second_difference_df = first_difference_df.diff().dropna()
 # --------------------------------------
 model = VAR(second_difference_df)
 results = model.fit(maxlags=maxlag, ic='aic')
-# print(results.summary())
+print(results.summary())
 
 
 # Perform Durbin-Watson Test
@@ -201,4 +201,6 @@ def forecast_future(num_years, showGraph=True):
             ax.set_ylim(0, initial_df[col][100]*2)
         plt.tight_layout()
         plt.show()
-# forecast_future(10)
+#forecast_future(10)
+
+# Run Functions Below
