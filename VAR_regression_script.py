@@ -161,6 +161,7 @@ def scan_for_significance():
             print('P-Val = ' + str(round(p_val_df.gdpPerCap.values[i], 4)) + ' for ' + str(p_val_df.index.values[i]) + '. Coeff = ' + str(round(results.params.gdpPerCap[i], 4)))
             count1 += 1
     print('\n' + 'Total Significant = ' + str(count1))
+    return [p_val_df, param_list, count1]
 # scan_for_significance()
 
 
@@ -203,4 +204,33 @@ def forecast_future(num_years, showGraph=True):
         plt.show()
 #forecast_future(10)
 
-# Run Functions Below
+# Run to Generate Parameters
+# scan_for_significance()
+#print(scan_for_significance()[0])
+# visualize_sep(initial_df)
+
+# Genearte Econometric Equation from Parameters
+def generate_equation_from_signifs(level_of_signif_p):
+    p_val_df = pd.DataFrame(results.pvalues.gdpPerCap)
+    p_val_df['Coefficients'] = results.params.gdpPerCap
+    num_vars = 0
+    param_list, coefficient_list, econometric_EQ= [],[],[]
+    final_equation = ''
+
+    for i in range(len(p_val_df)):
+        if p_val_df.gdpPerCap.values[i] < level_of_signif_p:
+            num_vars += 1
+            coefficient_list.append(round(results.params.gdpPerCap[i], 4))
+            param_list.append(p_val_df.index.values[i])
+    print('\n' + 'Total Significant Vars =  ' + str(num_vars) + '\n')
+
+    # Generate EQ from these arrays, display properly for use
+    econometric_EQ_array = list(zip(coefficient_list, param_list))
+
+    for pair in econometric_EQ_array:
+        final_equation += f'{pair[0]}*{pair[1]} + '
+
+    final_equation = ''.join((f'Equation ({level_of_signif_p} lvl) = ', final_equation, 'e'))
+    print(final_equation)
+
+generate_equation_from_signifs(0.1)
