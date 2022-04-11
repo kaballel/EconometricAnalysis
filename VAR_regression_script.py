@@ -34,7 +34,7 @@ raw_df.drop(['propAgr'], axis=1, inplace=True)
 maxlag = None
 signif_level = 0.05
 start_year = 1903
-end_year = 1939
+end_year = 2003
 
 # Decide Period to Analyze
 # -----------------------
@@ -262,7 +262,7 @@ def forecast_future(num_years, showGraph=True):
             ax.set_title(col + ": Forecast vs Actuals")
             ax.spines["top"].set_alpha(0)
             ax.tick_params(labelsize=6)
-            #ax.set_ylim(0, initial_df[col][100]*2)
+            ax.set_ylim(0, initial_df[col][100]*2)
         plt.tight_layout()
         plt.show()
 forecast_future(num_years = 10)
@@ -329,7 +329,7 @@ def impulse_response_analysis(variable, years_to_analyze, signif_level = signif_
             #fig2 = irf.plot_cum_effects(impulse = variable, response = 'gdpPerCap', signif = signif_level)
             plt.tight_layout()
         plt.show()
-impulse_response_analysis('All', 10, =showGraphs = True)
+impulse_response_analysis('All', 10, showGraphs = True)
 #impulse_response_analysis('prodElectric', 10, showGraphs = True)
 
 
