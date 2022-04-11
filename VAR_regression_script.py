@@ -2,28 +2,33 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 from datetime import datetime
 import warnings
 import statsmodels.api as sm
+from pprint import pprint
 
 from statsmodels.tsa.api import VAR
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.stats.stattools import durbin_watson
 from statsmodels.tools.eval_measures import rmse, aic
 from statsmodels.tsa.vector_ar.vecm import coint_johansen
+from statsmodels.tsa.vector_ar import irf
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from statsmodels.tsa.ar_model import ar_select_order, AutoReg
 from sklearn.linear_model import LinearRegression
 from statsmodels.tsa.stattools import grangercausalitytests
 
-# Ignore Warnings on Code (ATS throwing errors)
+# Ignore Warnings on Code (ATS throwing errors), Set Pandas Options
 warnings.filterwarnings("ignore")
+pd.set_option('display.max_rows', 500)
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 1000)
 
 # Import Data for Analysis
 initial_df = pd.read_csv('./Primary_Dataset_1.csv', parse_dates=['Year'], index_col=['Year'])
 initial_df.drop(['propAgr', 'propManu'], axis=1, inplace=True)
-
+initial_df.head()
+# Reference: [Year = 0,pop = 1,prodElectric = 2,lenRail,prodAgr,numPatents,numMiners,numCorps,gdpPerCap]
 # Set Max Timelag
 maxlag = 8
 
@@ -85,7 +90,7 @@ def cointegration_test(dataframe, alpha=0.05):
 
 # Check for stationarity with Augmented Dickey-Fuller Test
 # -------------------------------------------------------
-def int_adfuller_test(series, signif=0.05, name='', verbose=False):
+def int_adfuller_test(series, signif=0.05, name='', verbose=False): # also has level of significance issue.. revisit
     """Perform ADFuller to test for Stationarity of given series"""
     r = adfuller(series, autolag='AIC')
     output = {'test_statistic':round(r[0], 4), 'pvalue':round(r[1], 4), 'n_lags':round(r[2], 4), 'n_obs':r[3]}
@@ -136,8 +141,6 @@ second_difference_df = first_difference_df.diff().dropna()
 # --------------------------------------
 model = VAR(second_difference_df)
 results = model.fit(maxlags=maxlag, ic='aic')
-# print(results.summary())
-
 
 # Perform Durbin-Watson Test
 # ----------------------------
@@ -151,18 +154,19 @@ durbin_watson_test()
 
 # Scan Results for Significant P-Values, List Results
 # -----------------------------------------------------
-def scan_for_significance(signif_level):
+def scan_for_significance(level_of_signif_p):
     p_val_df = pd.DataFrame(results.pvalues.gdpPerCap)
     p_val_df['Coefficients'] = results.params.gdpPerCap
     count1 = 0
     param_list = []
     print('Scanning for significant variables ...')
     for i in range(len(p_val_df)):
-        if p_val_df.gdpPerCap.values[i] < signif_level:
+        if p_val_df.gdpPerCap.values[i] < level_of_signif_p:
             print('P-Val = ' + str(round(p_val_df.gdpPerCap.values[i], 4)) + ' for ' + str(p_val_df.index.values[i]) + '. Coeff = ' + str(round(results.params.gdpPerCap[i], 4)))
             count1 += 1
     print('\n' + 'Total Significant = ' + str(count1))
-#scan_for_significance(0.1)
+    return [p_val_df, param_list, count1]
+# scan_for_significance(level_of_signif_p)
 
 
 # Forecast VAR Model N-Years into future
@@ -202,4 +206,70 @@ def forecast_future(num_years, showGraph=True):
             ax.set_ylim(0, initial_df[col][100]*2)
         plt.tight_layout()
         plt.show()
-# forecast_future(10)
+#forecast_future(10)
+
+# Run to Generate Parameters
+# scan_for_significance()
+#print(scan_for_significance()[0])
+# visualize_sep(initial_df)
+
+# Genearte Econometric Equation from Parameters
+def generate_equation_from_signifs(level_of_signif_p):
+    p_val_df = pd.DataFrame(results.pvalues.gdpPerCap)
+    p_val_df['Coefficients'] = results.params.gdpPerCap
+    num_vars = 0
+    param_list, coefficient_list, econometric_EQ= [],[],[]
+    final_equation = ''
+
+    for i in range(len(p_val_df)):
+        if p_val_df.gdpPerCap.values[i] < level_of_signif_p:
+            num_vars += 1
+            coefficient_list.append(round(results.params.gdpPerCap[i], 4))
+            param_list.append(p_val_df.index.values[i])
+    print('\n' + 'Total Significant Vars =  ' + str(num_vars) + '\n')
+
+    # Generate EQ from these arrays, display properly for use
+    econometric_EQ_array = list(zip(coefficient_list, param_list))
+
+    for pair in econometric_EQ_array:
+        final_equation += f'{pair[0]}*{pair[1]} + '
+
+    final_equation = ''.join((f'Equation ({level_of_signif_p} lvl) = ', final_equation, 'e'))
+    print(final_equation)
+
+#generate_equation_from_signifs(0.1)
+
+# Do Impulse-Response Analysis
+def impulse_response_analysis(variable, years_to_analyze, showGraphs = True):
+    irf = results.irf(years_to_analyze)
+    irfs_for_period_N = irf.irfs[years_to_analyze]
+    cum_effs_for_period_N = irf.cum_effects[years_to_analyze]
+    print(f'Impluse Response Functions of {variable} on GDP Per Capita for {years_to_analyze} Periods: \n')
+    pprint(pd.DataFrame(irfs_for_period_N))
+    print(f' \n Cumulative Effects of {variable} on GDP Per Capita for {years_to_analyze} Periods: \n')
+    pprint(pd.DataFrame(cum_effs_for_period_N))
+    if showGraphs == True:
+        if variable == 'All':
+            fig1 = irf.plot(response = 'gdpPerCap')
+            fig1.tight_layout()
+            plt.title('Effect of all variable impulses on GDP Per Capita')
+            fig2 = irf.plot_cum_effects(response = 'gdpPerCap')
+            fig2.tight_layout()
+
+        else:
+            fig1 = irf.plot(impulse = variable, response = 'gdpPerCap')
+            fig1.tight_layout()
+            plt.title(f'Effect of {variable} on GDP Per Capita')
+            fig2 = irf.plot_cum_effects(impulse = variable, response = 'gdpPerCap')
+            fig2.tight_layout()
+    # insert background color parameters
+        plt.show()
+
+#    def plot(self, orth=False, *, impulse=None, response=None,
+#              signif=0.05, plot_params=None, figsize=(10, 10), <-- CHANGE SIGNIF LEVEL!!!!
+#              subplot_params=None, plot_stderr=True, stderr_type='asym',
+#              repl=1000, seed=None, component=None):
+
+impulse_response_analysis('All', 10, showGraphs = True)
+#impulse_response_analysis('All', 10, showGraphs = True)
+#pprint(pd.DataFrame(results.ma_rep(10)[10]))
