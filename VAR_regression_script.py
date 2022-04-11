@@ -34,7 +34,7 @@ raw_df.drop(['propAgr'], axis=1, inplace=True)
 maxlag = None
 signif_level = 0.05
 start_year = 1903
-end_year = 2003
+end_year = 1945
 
 # Decide Period to Analyze
 # -----------------------
@@ -56,7 +56,7 @@ initial_df = initial_df.set_index(['Year']) # reset index back
 
 # Edit Maxlag to work in functions requiring int val
 # ---------------------------------------------------
-if type(maxlag) == None:
+if maxlag == None:
     maxlag_temp = round(12*((year_span)/100)**(1/4)) # fundamental assumption (2003 paper)
 else:
     maxlag_temp = maxlag
@@ -265,7 +265,7 @@ def forecast_future(num_years, showGraph=True):
             ax.set_ylim(0, initial_df[col][100]*2)
         plt.tight_layout()
         plt.show()
-forecast_future(num_years = 10)
+#forecast_future(num_years = 10)
 
 
 # Generate Econometric Equation from Parameters
@@ -351,7 +351,8 @@ def linear_OLS(dataframe):
 
 
 
-
+# Analysis TO-DO:
+# - 
 
 
 
