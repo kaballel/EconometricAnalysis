@@ -146,23 +146,23 @@ def durbin_watson_test():
     dw_stats = durbin_watson(results.resid)
     dw_vars = ['pop', 'prodElectric', 'lenRail', 'prodAgr', 'numPatents', 'numMiners', 'numCorps', 'gdpPerCap']
     print(dict(zip(dw_vars, dw_stats)))
-# durbin_watson_test()
+durbin_watson_test()
 
 
 # Scan Results for Significant P-Values, List Results
 # -----------------------------------------------------
-def scan_for_significance():
+def scan_for_significance(signif_level):
     p_val_df = pd.DataFrame(results.pvalues.gdpPerCap)
     p_val_df['Coefficients'] = results.params.gdpPerCap
     count1 = 0
     param_list = []
     print('Scanning for significant variables ...')
     for i in range(len(p_val_df)):
-        if p_val_df.gdpPerCap.values[i] < 0.05:
+        if p_val_df.gdpPerCap.values[i] < signif_level:
             print('P-Val = ' + str(round(p_val_df.gdpPerCap.values[i], 4)) + ' for ' + str(p_val_df.index.values[i]) + '. Coeff = ' + str(round(results.params.gdpPerCap[i], 4)))
             count1 += 1
     print('\n' + 'Total Significant = ' + str(count1))
-# scan_for_significance()
+#scan_for_significance(0.1)
 
 
 # Forecast VAR Model N-Years into future
