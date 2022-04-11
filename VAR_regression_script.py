@@ -166,7 +166,7 @@ def scan_for_significance(level_of_signif_p):
             count1 += 1
     print('\n' + 'Total Significant = ' + str(count1))
     return [p_val_df, param_list, count1]
-# scan_for_significance(level_of_signif_p)
+scan_for_significance(0.05)
 
 
 # Forecast VAR Model N-Years into future
