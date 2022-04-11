@@ -6,6 +6,7 @@ from datetime import datetime
 import warnings
 import statsmodels.api as sm
 from pprint import pprint
+import matplotlib.gridspec as gridspec
 
 from statsmodels.tsa.api import VAR
 from statsmodels.tsa.stattools import adfuller
@@ -28,9 +29,17 @@ pd.set_option('display.width', 1000)
 initial_df = pd.read_csv('./Primary_Dataset_1.csv', parse_dates=['Year'], index_col=['Year'])
 initial_df.drop(['propAgr', 'propManu'], axis=1, inplace=True)
 initial_df.head()
-# Reference: [Year = 0,pop = 1,prodElectric = 2,lenRail,prodAgr,numPatents,numMiners,numCorps,gdpPerCap]
+
 # Set Max Timelag
 maxlag = 8
+
+# Generate list of variables
+variable_list = []
+for col in initial_df.columns:
+    variable_list.append(col)
+
+# Var List = ['pop', 'prodElectric', 'lenRail', 'prodAgr', 'numPatents', 'numMiners', 'numCorps', 'gdpPerCap']
+        # Pos  0         1               2           3           4           5           6           7
 
 # Data Visualization Functions
 # --------------------------
@@ -149,7 +158,7 @@ def durbin_watson_test():
     dw_stats = durbin_watson(results.resid)
     dw_vars = ['pop', 'prodElectric', 'lenRail', 'prodAgr', 'numPatents', 'numMiners', 'numCorps', 'gdpPerCap']
     print(dict(zip(dw_vars, dw_stats)))
-durbin_watson_test()
+#durbin_watson_test()
 
 
 # Scan Results for Significant P-Values, List Results
@@ -166,7 +175,7 @@ def scan_for_significance(level_of_signif_p):
             count1 += 1
     print('\n' + 'Total Significant = ' + str(count1))
     return [p_val_df, param_list, count1]
-scan_for_significance(0.05)
+#scan_for_significance(0.05)
 
 
 # Forecast VAR Model N-Years into future
@@ -213,7 +222,7 @@ def forecast_future(num_years, showGraph=True):
 #print(scan_for_significance()[0])
 # visualize_sep(initial_df)
 
-# Genearte Econometric Equation from Parameters
+# Generate Econometric Equation from Parameters
 def generate_equation_from_signifs(level_of_signif_p):
     p_val_df = pd.DataFrame(results.pvalues.gdpPerCap)
     p_val_df['Coefficients'] = results.params.gdpPerCap
@@ -236,40 +245,42 @@ def generate_equation_from_signifs(level_of_signif_p):
 
     final_equation = ''.join((f'Equation ({level_of_signif_p} lvl) = ', final_equation, 'e'))
     print(final_equation)
-
-#generate_equation_from_signifs(0.1)
+    print('\n')
+generate_equation_from_signifs(0.05)
 
 # Do Impulse-Response Analysis
 def impulse_response_analysis(variable, years_to_analyze, showGraphs = True):
     irf = results.irf(years_to_analyze)
     irfs_for_period_N = irf.irfs[years_to_analyze]
     cum_effs_for_period_N = irf.cum_effects[years_to_analyze]
-    print(f'Impluse Response Functions of {variable} on GDP Per Capita for {years_to_analyze} Periods: \n')
-    pprint(pd.DataFrame(irfs_for_period_N))
-    print(f' \n Cumulative Effects of {variable} on GDP Per Capita for {years_to_analyze} Periods: \n')
-    pprint(pd.DataFrame(cum_effs_for_period_N))
+
+    # Create Table of IRF's
+    df_irf = pd.DataFrame(data = irfs_for_period_N, index = variable_list, columns = variable_list)
+
+    # Create Table of CumEff's
+    df_cumEff = pd.DataFrame(data = cum_effs_for_period_N, index = variable_list, columns = variable_list)
+
+    # Handle 'All' print
+    if variable == 'All':
+        print(f'Impluse Response Functions of All Variables for {years_to_analyze} Periods: \n')
+        pprint(df_irf)
+        print(f'\n\nCumulative Effects of All Variables for {years_to_analyze} Periods: \n')
+        pprint(df_cumEff)
+
+    # Handle Variable print
+    else:
+        print(f'\nImpluse Response Functions of {variable} on GDP Per Capita for {years_to_analyze} Periods: \n')
+        pprint(df_irf[variable ])
+
+    # Show Graphs
     if showGraphs == True:
         if variable == 'All':
-            fig1 = irf.plot(response = 'gdpPerCap')
-            fig1.tight_layout()
-            plt.title('Effect of all variable impulses on GDP Per Capita')
-            fig2 = irf.plot_cum_effects(response = 'gdpPerCap')
-            fig2.tight_layout()
-
+            irf_plot = irf.plot(response = 'gdpPerCap')
+            cum_plot = irf.plot_cum_effects(response = 'gdpPerCap')
+            plt.tight_layout()
         else:
             fig1 = irf.plot(impulse = variable, response = 'gdpPerCap')
-            fig1.tight_layout()
-            plt.title(f'Effect of {variable} on GDP Per Capita')
             fig2 = irf.plot_cum_effects(impulse = variable, response = 'gdpPerCap')
-            fig2.tight_layout()
-    # insert background color parameters
+            plt.tight_layout()
         plt.show()
-
-#    def plot(self, orth=False, *, impulse=None, response=None,
-#              signif=0.05, plot_params=None, figsize=(10, 10), <-- CHANGE SIGNIF LEVEL!!!!
-#              subplot_params=None, plot_stderr=True, stderr_type='asym',
-#              repl=1000, seed=None, component=None):
-
-impulse_response_analysis('All', 10, showGraphs = True)
-#impulse_response_analysis('All', 10, showGraphs = True)
-#pprint(pd.DataFrame(results.ma_rep(10)[10]))
+impulse_response_analysis('pop', 10, showGraphs = False)
