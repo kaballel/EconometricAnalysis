@@ -9,6 +9,7 @@ from pprint import pprint
 import matplotlib.gridspec as gridspec
 
 from statsmodels.tsa.api import VAR
+from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.stats.stattools import durbin_watson
 from statsmodels.tools.eval_measures import rmse, aic
@@ -34,7 +35,7 @@ raw_df.drop(['propAgr'], axis=1, inplace=True)
 maxlag = None
 signif_level = 0.05
 start_year = 1903
-end_year = 1945
+end_year = 2003
 
 # Decide Period to Analyze
 # -----------------------
@@ -57,7 +58,7 @@ initial_df = initial_df.set_index(['Year']) # reset index back
 # Edit Maxlag to work in functions requiring int val
 # ---------------------------------------------------
 if maxlag == None:
-    maxlag_temp = round(12*((year_span)/100)**(1/4)) # fundamental assumption (2003 paper)
+    maxlag_temp = 8 # using criterion
 else:
     maxlag_temp = maxlag
 
@@ -69,6 +70,20 @@ for col in initial_df.columns:
     variable_list.append(col)
 # Var List = ['pop', 'prodElectric', 'lenRail', 'prodAgr', 'numPatents', 'numMiners', 'numCorps', 'gdpPerCap']
         # Pos  0         1               2           3           4           5           6           7                (8 total)
+
+# Generate List of Max Vals for Y-Axis Lim
+# -----------------------------------------
+def get_max_vals(initial_df):
+    initial_df = initial_df.reset_index()
+    max_val_array = []
+    for var in variable_list:
+        max_val = initial_df.at[initial_df[var].idxmax(), var]
+        #print(f'Max Val of {var} is {max_val}')
+        max_val_array.append(max_val)
+    max_val_dict = list(zip(variable_list, max_val_array))
+    #print(max_val_dict)
+    initial_df = initial_df.set_index(['Year']) # reset index back
+
 
 # Data Visualization Functions
 # --------------------------
@@ -252,6 +267,8 @@ def forecast_future(num_years, showGraph=True):
         return df_fc
     df_results = invert_transformation(initial_df, df_forecast, second_diff=True)
 
+    # Calculate % error of final guess
+
     if showGraph == True:
         # Plot Forecast Vs. Actual
         # --------------------------
@@ -262,10 +279,10 @@ def forecast_future(num_years, showGraph=True):
             ax.set_title(col + ": Forecast vs Actuals")
             ax.spines["top"].set_alpha(0)
             ax.tick_params(labelsize=6)
-            ax.set_ylim(0, initial_df[col][100]*2)
+            ax.set_ylim(0, initial_df[col][initial_df[col].idxmax()]*1.2)
         plt.tight_layout()
         plt.show()
-#forecast_future(num_years = 10)
+forecast_future(num_years = 10)
 
 
 # Generate Econometric Equation from Parameters
@@ -329,8 +346,8 @@ def impulse_response_analysis(variable, years_to_analyze, signif_level = signif_
             #fig2 = irf.plot_cum_effects(impulse = variable, response = 'gdpPerCap', signif = signif_level)
             plt.tight_layout()
         plt.show()
-impulse_response_analysis('All', 10, showGraphs = True)
-#impulse_response_analysis('prodElectric', 10, showGraphs = True)
+#impulse_response_analysis('All', 8, showGraphs = True)
+#impulse_response_analysis('prodElectric', 8, showGraphs = True)
 
 
 # Do Simple OLS on Data Using Given Vars Linearly -- EXP WITH NONLIN FORMS
@@ -344,27 +361,8 @@ def linear_OLS(dataframe):
 #linear_OLS(initial_df)
 
 
-# Conduct Time-Series VAR Analysis (Directory) -- COME BACK TO THIS
-# ------------------------------------------
-#def time_series_VAR():
 
-
-
-
-# Analysis TO-DO:
-# - 
-
-
-
-
-
-
-
-
-
-
-
-
+# SEE https://towardsdatascience.com/granger-causality-and-vector-auto-regressive-model-for-time-series-forecasting-3226a64889a6
 
 
 
