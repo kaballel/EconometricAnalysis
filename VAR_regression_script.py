@@ -63,13 +63,14 @@ else:
     maxlag_temp = maxlag
 
 
-# Generate list of variables
+# Generate list of variables and their descriptions
 # --------------------------
 variable_list = []
+desc_list = ['1000s of People', '1000s of kW', 'Oprtnl. km', 'Tons of Food', '# of Patents', '# Miners', '# Corporations', '% Mnfctrng Corp', 'Millions $USD']
 for col in initial_df.columns:
     variable_list.append(col)
-# Var List = ['pop', 'prodElectric', 'lenRail', 'prodAgr', 'numPatents', 'numMiners', 'numCorps', 'gdpPerCap']
-        # Pos  0         1               2           3           4           5           6           7                (8 total)
+# Var List = ['pop', 'prodElectric', 'lenRail', 'prodAgr', 'numPatents', 'numMiners', 'numCorps', 'propManu', 'gdpPerCap']
+        # Pos  0         1               2           3           4           5           6           7            8     (9 total)
 
 # Generate List of Max Vals for Y-Axis Lim
 # -----------------------------------------
@@ -95,6 +96,7 @@ def visualize_sep(dataframe):
         # Decorations
         ax.set_title(str(dataframe.columns[i] + ' vs. Year'))
         ax.set_xlabel('Year')
+        ax.set_ylabel(desc_list[i], fontsize=7)
         ax.xaxis.set_ticks_position('none')
         ax.yaxis.set_ticks_position('none')
         ax.spines["top"].set_alpha(0)
@@ -106,24 +108,6 @@ def visualize_stack(dataframe):
     plt.show()
 # visualize_sep(initial_df)
 # visualize_stack(initial_df)
-
-
-# Try the Granger Causality Test (uses temp maxlag)
-# -------------------------------
-def grangers_causation_matrix(data, variables, test='ssr_chi2test', verbose=False):
-    df = pd.DataFrame(np.zeros((len(variables), len(variables))), columns=variables, index=variables)
-    for c in df.columns:
-        for r in df.index:
-            test_result = grangercausalitytests(data[[r, c]], maxlag = maxlag_temp, verbose=False)
-            p_values = [round(test_result[i+1][0][test][1],4) for i in range(maxlag_temp)]
-            if verbose: print(f'Y = {r}, X = {c}, P Values = {p_values}')
-            min_p_value = np.min(p_values)
-            df.loc[r, c] = min_p_value
-    df.columns = [var + '_x' for var in variables]
-    df.index = [var + '_y' for var in variables]
-    print(f'Maxlag used (temp) = {maxlag_temp}')
-    return df
-#print(grangers_causation_matrix(initial_df, variables = initial_df.columns))
 
 
 # Try the Johansen Cointegration test
@@ -178,13 +162,12 @@ def adfuller_test(dataframe, showgraph = False):
         stationary_index_list.append(result)
     return stationary_index_list
 #adfuller_test(initial_df, showgraph = True)
-#print(adfuller_test(initial_df))
+#print(adfuller_test(initial_df, showgraph = True))
 
 
 # Normalize Data
 # ----------------
-normalized_df = (initial_df - initial_df.mean())/ initial_df.std()
-
+normalized_df = ((initial_df - initial_df.mean())/ initial_df.std())
 
 # Function to Make Data Stationary by Differencing (until adfuller = all True)
 # -----------------------------------------------------------------------
@@ -199,7 +182,6 @@ def make_stationary(dataframe, showCount = False):
     print(f'Difference Count = {difference_count}')
     return dataframe
 final_df = make_stationary(normalized_df)
-#visualize_sep(final_df)
 
 
 # Visualize Final Data
@@ -220,10 +202,28 @@ print(f'Model uses Lag Order: {results.k_ar} and Significance Lvl: {round((1-sig
 # ----------------------------
 def durbin_watson_test():
     print('Durbin-Watson Results: ')
-    dw_stats = durbin_watson(results.resid)
+    dw_stats = np.round(durbin_watson(results.resid), 2)
     dw_vars = variable_list
     print(dict(zip(dw_vars, dw_stats)))
 #durbin_watson_test()
+
+
+# Try the Granger Causality Test (uses temp maxlag)
+# -------------------------------
+def grangers_causation_matrix(data, variables, test='ssr_chi2test', verbose=False):
+    df = pd.DataFrame(np.zeros((len(variables), len(variables))), columns=variables, index=variables)
+    for c in df.columns:
+        for r in df.index:
+            test_result = grangercausalitytests(data[[r, c]], maxlag = maxlag_temp, verbose=False)
+            p_values = [round(test_result[i+1][0][test][1],4) for i in range(maxlag_temp)]
+            if verbose: print(f'Y = {r}, X = {c}, P Values = {p_values}')
+            min_p_value = np.min(p_values)
+            df.loc[r, c] = min_p_value
+    df.columns = [var + '_x' for var in variables]
+    df.index = [var + '_y' for var in variables]
+    print(f'Maxlag used (temp) = {maxlag_temp}')
+    return df
+print(grangers_causation_matrix(initial_df, variables = initial_df.columns))
 
 
 # Scan Results for Significant P-Values, List Results
@@ -272,17 +272,17 @@ def forecast_future(num_years, showGraph=True):
     if showGraph == True:
         # Plot Forecast Vs. Actual
         # --------------------------
-        fig, axes = plt.subplots(nrows=int(len(initial_df.columns)/2), ncols=2, dpi=150, figsize=(10,10))
+        fig, axes = plt.subplots(nrows=3, ncols=3, dpi=150, figsize=(10,10))
         for i, (col,ax) in enumerate(zip(initial_df.columns, axes.flatten())):
             df_results[col+'_forecast'].plot(legend=True, ax=ax).autoscale(axis='x',tight=True)
             initial_df[col][-years_to_forecast:].plot(legend=True, ax=ax);
-            ax.set_title(col + ": Forecast vs Actuals")
+            ax.set_title((col + ": Forecast vs Actuals"), fontsize=9)
             ax.spines["top"].set_alpha(0)
             ax.tick_params(labelsize=6)
-            ax.set_ylim(0, initial_df[col][initial_df[col].idxmax()]*1.2)
-        plt.tight_layout()
+            ax.set_ylim(0, initial_df[col][initial_df[col].idxmax()]*1.5)
+            plt.tight_layout()
         plt.show()
-forecast_future(num_years = 10)
+#forecast_future(num_years = 10)
 
 
 # Generate Econometric Equation from Parameters
@@ -310,7 +310,7 @@ def generate_equation_from_signifs(level_of_signif_p = signif_level):
     final_equation = ''.join((f'Equation ({level_of_signif_p} lvl) = ', final_equation, 'e'))
     print(final_equation)
     print('\n')
-generate_equation_from_signifs()
+#generate_equation_from_signifs()
 
 
 # Do Impulse-Response Analysis
@@ -346,7 +346,7 @@ def impulse_response_analysis(variable, years_to_analyze, signif_level = signif_
             #fig2 = irf.plot_cum_effects(impulse = variable, response = 'gdpPerCap', signif = signif_level)
             plt.tight_layout()
         plt.show()
-#impulse_response_analysis('All', 8, showGraphs = True)
+impulse_response_analysis('All', 10, showGraphs = True)
 #impulse_response_analysis('prodElectric', 8, showGraphs = True)
 
 
