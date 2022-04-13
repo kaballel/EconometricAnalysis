@@ -34,7 +34,7 @@ raw_df.drop(['propAgr'], axis=1, inplace=True)
 # Set Parameters
 maxlag = None
 signif_level = 0.05
-start_year = 1903
+start_year = 1945
 end_year = 2003
 
 # Decide Period to Analyze
@@ -223,7 +223,7 @@ def grangers_causation_matrix(data, variables, test='ssr_chi2test', verbose=Fals
     df.index = [var + '_y' for var in variables]
     print(f'Maxlag used (temp) = {maxlag_temp}')
     return df
-print(grangers_causation_matrix(initial_df, variables = initial_df.columns))
+#print(grangers_causation_matrix(initial_df, variables = initial_df.columns))
 
 
 # Scan Results for Significant P-Values, List Results
@@ -302,7 +302,9 @@ def generate_equation_from_signifs(level_of_signif_p = signif_level):
     print('\n' + 'Total Significant Vars =  ' + str(num_vars) + '\n')
 
     # Generate EQ from these arrays, display properly for use
+    econometric_EQ_array_dict = dict(zip(coefficient_list, param_list))
     econometric_EQ_array = list(zip(coefficient_list, param_list))
+    print(econometric_EQ_array_dict)
 
     for pair in econometric_EQ_array:
         final_equation += f'{pair[0]}*{pair[1]} + '
@@ -310,7 +312,7 @@ def generate_equation_from_signifs(level_of_signif_p = signif_level):
     final_equation = ''.join((f'Equation ({level_of_signif_p} lvl) = ', final_equation, 'e'))
     print(final_equation)
     print('\n')
-#generate_equation_from_signifs()
+generate_equation_from_signifs()
 
 
 # Do Impulse-Response Analysis
@@ -327,14 +329,14 @@ def impulse_response_analysis(variable, years_to_analyze, signif_level = signif_
     df_cumEff = pd.DataFrame(data = cum_effs_for_period_N, index = variable_list, columns = variable_list)
 
     # Handle 'All' or variable print
-    #if variable == 'All':
-        #print(f'Impluse Response Functions of All Variables for {years_to_analyze} Periods: \n')
-        #pprint(df_irf)
-        # print(f'\n\nCumulative Effects of All Variables for {years_to_analyze} Periods: \n')
-        # pprint(df_cumEff)
-    #else:
-        #print(f'\nImpluse Response Functions of {variable} on GDP Per Capita for {years_to_analyze} Periods: \n')
-        #pprint(df_irf[variable])
+    if variable == 'All':
+        print(f'Impluse Response Functions of All Variables for {years_to_analyze} Periods: \n')
+        pprint(df_irf)
+        #print(f'\n\nCumulative Effects of All Variables for {years_to_analyze} Periods: \n')
+        #pprint(df_cumEff)
+    else:
+        print(f'\nImpluse Response Functions of {variable} on GDP Per Capita for {years_to_analyze} Periods: \n')
+        pprint(df_irf[variable])
     # Show Graphs
     if showGraphs == True:
         if variable == 'All':
@@ -346,7 +348,7 @@ def impulse_response_analysis(variable, years_to_analyze, signif_level = signif_
             #fig2 = irf.plot_cum_effects(impulse = variable, response = 'gdpPerCap', signif = signif_level)
             plt.tight_layout()
         plt.show()
-impulse_response_analysis('All', 10, showGraphs = True)
+#impulse_response_analysis('All', 25, showGraphs = True)
 #impulse_response_analysis('prodElectric', 8, showGraphs = True)
 
 
