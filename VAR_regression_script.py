@@ -182,7 +182,7 @@ def make_stationary(dataframe, showCount = False):
     print(f'Difference Count = {difference_count}')
     return dataframe
 final_df = make_stationary(normalized_df)
-
+#print(adfuller_test(final_df, showgraph = True))
 
 # Visualize Final Data
 # -------------------------
@@ -312,7 +312,7 @@ def generate_equation_from_signifs(level_of_signif_p = signif_level):
     final_equation = ''.join((f'Equation ({level_of_signif_p} lvl) = ', final_equation, 'e'))
     print(final_equation)
     print('\n')
-generate_equation_from_signifs()
+#generate_equation_from_signifs()
 
 
 # Do Impulse-Response Analysis
